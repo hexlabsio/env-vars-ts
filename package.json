@@ -1,8 +1,11 @@
 {
-  "name": "env-vars-ts",
+  "name": "@hexlabs/env-vars-ts",
+  "author": "hexlabs.io",
   "version": "0.1.0",
   "description": "Type safe control over environment variables in typescript",
   "main": "dist/environment.js",
+  "types": "dist/environment.d.ts",
+  "homepage": "https://github.com/hexlabsio/env-vars-ts#readme",
   "scripts": {
     "build": "webpack",
     "prebuild": "npm run lint",
@@ -10,8 +13,7 @@
     "test": "npx jest --runInBand --detectOpenHandles --colors --verbose --reporters=default --coverage",
     "prepare": "husky install"
   },
-  "keywords": [],
-  "author": "chris.barbour@hexlabs.io",
+  "keywords": ["environment", "variables", "env", "envs"],
   "devDependencies": {
     "@types/jest": "^26.0.21",
     "@types/node": "^14.14.35",
