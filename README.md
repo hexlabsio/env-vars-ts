@@ -8,33 +8,28 @@ Typesafe control over environment variables in Typescript.
 ## Get Started
 Before using this library ensure that you have `"strict": true` set in tsconfig.
 
-Define a type for the environment that you want: 
+Define the required environment variable names that you want: 
 
 ```typescript
-type MyEnvs = {
-  ENV_ONE: string; //required (secret value)
-  ENV_TWO: string; //required
-  ENV_THREE?: string; //optional
-  ENV_FOUR?: string; //optional
-}
+const required = ['ENV_ONE', 'ENV_TWO'] as const; //as const is important for type information
 ```
 
-Set up an Environment object defining default values:
+Define the optional environment variable names that you want:
 
 ```typescript
-// Extracts environment variables from process.env and if a required env 
-// is not present and does not have a default value then an error will be thrown.
-// this behaviour can be overridden by passing config as second arg
-const environmentVariables = Environment.fromProcess<MyEnvs>({
-  requiredDefaults: {
-    ENV_ONE: 'ENV_ONE DEFAULT VALUE', // When not supplied ENV_ONE gets this value
-    ENV_TWO: undefined // All envs must provide a default (undefined when no default)
-  },
-  optionalDefaults: {
-    ENV_THREE: 'ENV_THREE DEFAULT VALUE',
-    ENV_FOUR: undefined
-  }
-}, { /* These configurations are all optional and have default values */
+const optional = ['ENV_THREE', 'ENV_FOUR'] as const; //as const is important for type information
+```
+
+Set up an Environment object providing default values (or not):
+
+```typescript
+const environmentVariables = defineEnvironmentFromProcess(required, optional, { ENV_ONE: 'default value' });
+```
+
+You can also provide various configuration options to hide secrets or log differently
+```typescript
+const environmentVariables = defineEnvironmentFromProcess(required, optional, { ENV_ONE: 'default value' }, 
+{ /* These configurations are all optional and have default values */
   //List of keys considered secrets
   secrets: ['ENV_ONE'],
   // Controls what happens to secrets for printing
@@ -46,12 +41,20 @@ const environmentVariables = Environment.fromProcess<MyEnvs>({
 });
 ```
 
+If all you want is the typed environment you can do this:
+
+```typescript
+const {environment} = defineEnvironmentFromProcess(required, optional);
+
+//The type of environment will be { ENV_ONE: string; ENV_TWO: string; ENV_THREE?: string; ENV_FOUR?: string }
+```
+
 Make use of environment variables:
 
 ```typescript
-// Pull out environment directly. Its type is MyEnvs
+// Pull out environment directly. Its type will have the required / optional parts that were passed
 const environment = environmentVariables.environment;
-//Use environment variable as it has now been verified
+//Use environment variable as they has now been verified
 console.log(environment.ENV_ONE);
 
 // Get ENV_ONE. Its type is string;
