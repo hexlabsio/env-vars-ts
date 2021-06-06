@@ -7,50 +7,28 @@ describe('Environment', () => {
   }
   
   it('should pull only typed vars from environment passed in', () => {
-    const {environment} = Environment.from<{a: string, c?: string}>({a: 'abc', b: '123', c: 'def'}, {
-      requiredDefaults: { a: undefined },
-      optionalDefaults: { c: undefined }
-    });
+    const {environment} = defineEnvironment({a: 'abc', b: '123', c: 'def'}, ['a'] as const, ['c'] as const);
     expect(Object.keys(environment)).toEqual(['c', 'a']);
     expect(environment).toEqual({a: 'abc', c: 'def'})
   });
   
   it('should pull only typed vars from process environment', () => {
     process.env = {a: 'abc', b: '123', c: 'def'}
-    const {environment} = Environment.fromProcess<{a: string, c?: string}>( {
-      requiredDefaults: { a: undefined },
-      optionalDefaults: { c: undefined }
-    });
+    const {environment} = defineEnvironmentFromProcess(['a'] as const, ['c'] as const);
     expect(Object.keys(environment)).toEqual(['c', 'a']);
     expect(environment).toEqual({a: 'abc', c: 'def'})
   });
   
   it('should default vars that are not present', () => {
-    const {environment} = Environment.from<{a: string, b?: string}>({}, {
-      requiredDefaults: { a: 'a' },
-      optionalDefaults: { b: 'b'}
-    });
-    expect(environment).toEqual({a: 'a', b: 'b'})
-  });
-  
-  it('should succeed when optional var no present and no default', () => {
-    const {environment} = Environment.from<{b?: string}>({}, {
-      optionalDefaults: { b: undefined }
-    });
-    expect(Object.keys(environment)).toEqual(['b']);
-    expect(environment).toEqual({b: undefined});
+    const {environment} = defineEnvironment({}, ['a'] as const, ['c'] as const, {a: 'a'});
+    expect(environment).toEqual({a: 'a'})
   });
   
   describe('Printing', () => {
     it('should print all envs with mapped secrets', () => {
-      type Envs = {a: string, b?: string, c?: string};
-      const config = mockConfig<Envs>();
-      const environment = Environment.from<Envs>({ a: 'abc', b: 'def' }, {
-        requiredDefaults: { a: undefined },
-        optionalDefaults: { b: undefined, c: undefined }
-      }, {...config, secrets: ['b', 'c']});
+      const environment = defineEnvironment({ a: 'abc', b: 'def' }, ['a'] as const, ['b', 'c'] as const, {a: 'a'}, {...mockConfig(), secrets: ['b', 'c']});
       environment.printEnvironment();
-      expect(config.log).toHaveBeenCalledWith('{\n' +
+      expect(environment.config.log).toHaveBeenCalledWith('{\n' +
         '  "b": "SECRET xxx",\n' +
         '  "c": "SECRET ",\n' +
         '  "a": "abc"\n' +
@@ -59,10 +37,7 @@ describe('Environment', () => {
   
     it('should print nulls when undefined', () => {
       console.debug = jest.fn();
-      const environment = Environment.from<{a: string, b?: string}>({ a: 'abc' }, {
-        requiredDefaults: { a: undefined },
-        optionalDefaults: { b: undefined }
-      });
+      const environment = defineEnvironment({ a: 'abc'}, ['a'] as const, ['b'] as const, {a: 'a'});
       environment.printEnvironment();
       expect(console.debug).toHaveBeenCalledWith('{\n' +
         '  "b": null,\n' +

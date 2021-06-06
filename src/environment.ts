@@ -35,13 +35,13 @@ type ObjifyOptional<R extends readonly string[], V> = R extends readonly [infer 
 
 type EnvDefinition<R extends readonly string[], O extends readonly string[]> = { [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }
 
-export function defineEnvironmentFromProcess<R extends readonly string[], O extends readonly string[]>(required?: R, optionals?: O, defaults?: ObjifyOptional<R, string>): Environment<{ [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }> {
-  return defineEnvironment(process.env, required, optionals, defaults);
+export function defineEnvironmentFromProcess<R extends readonly string[], O extends readonly string[]>(required?: R, optionals?: O, defaults?: ObjifyOptional<R, string>, config: Partial<Config<EnvDefinition<R,O>>> = {}): Environment<{ [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }> {
+  return defineEnvironment(process.env, required, optionals, defaults, config);
 }
 
-export function defineEnvironment<R extends readonly string[], O extends readonly string[]>(environment: EnvironmentObject, required?: R, optionals?: O, defaults?: ObjifyOptional<R, string>): Environment<{ [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }> {
+export function defineEnvironment<R extends readonly string[], O extends readonly string[]>(environment: EnvironmentObject, required?: R, optionals?: O, defaults?: ObjifyOptional<R, string>, config: Partial<Config<EnvDefinition<R,O>>> = {}): Environment<{ [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }> {
   const requiredDefaults = (required as readonly string[] ?? []).reduce((acc, key) => ({...acc, [key]: (defaults as any ?? {})[key]}), {})
-  return Environment.from<EnvDefinition<R,O>>(environment, {requiredDefaults, optionalDefaults: (optionals as readonly string[] ?? []).reduce((acc, key) => ({...acc, [key]: undefined}), {})} as unknown as Defaults<EnvDefinition<R,O>>)
+  return Environment.from<EnvDefinition<R,O>>(environment, {requiredDefaults, optionalDefaults: (optionals as readonly string[] ?? []).reduce((acc, key) => ({...acc, [key]: undefined}), {})} as unknown as Defaults<EnvDefinition<R,O>>, config)
 }
 
 export interface Config<E> {
@@ -63,7 +63,7 @@ export default class Environment<E extends EnvironmentVariables> {
   
   private representation?: E;
   
-  private constructor(public readonly environment: E, private readonly config: Config<E>) {}
+  private constructor(public readonly environment: E, public readonly config: Config<E>) {}
   
   private withMappedSecrets() {
     const secrets: (keyof E)[] = this.config.secrets ?? [];
