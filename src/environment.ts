@@ -22,6 +22,28 @@ type MatchOptionality<T,P> = undefined extends T ? P | undefined : P;
 
 type EnvironmentObject = { [key: string]: string | undefined };
 
+type Objify<R extends readonly string[], V> = R extends readonly [infer HEAD] ?
+  (HEAD extends string ? {[key in HEAD]: V} : never) :
+  R extends readonly [infer HEAD, ...infer TAIL] ?
+    ( TAIL extends string[] ? (HEAD extends string ? {[key in HEAD | keyof Objify<TAIL, V>]: V} : never) : never )
+    : never;
+type ObjifyOptional<R extends readonly string[], V> = R extends readonly [infer HEAD] ?
+  (HEAD extends string ? {[key in HEAD]?: V} : never) :
+  R extends readonly [infer HEAD, ...infer TAIL] ?
+    ( TAIL extends string[] ? (HEAD extends string ? {[key in HEAD | keyof ObjifyOptional<TAIL, V>]?: V} : never) : never )
+    : never;
+
+type EnvDefinition<R extends readonly string[], O extends readonly string[]> = { [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }
+
+export function defineEnvironmentFromProcess<R extends readonly string[], O extends readonly string[]>(required?: R, optionals?: O, defaults?: ObjifyOptional<R, string>): Environment<{ [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }> {
+  return defineEnvironment(process.env, required, optionals, defaults);
+}
+
+export function defineEnvironment<R extends readonly string[], O extends readonly string[]>(environment: EnvironmentObject, required?: R, optionals?: O, defaults?: ObjifyOptional<R, string>): Environment<{ [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }> {
+  const requiredDefaults = (required as readonly string[] ?? []).reduce((acc, key) => ({...acc, [key]: (defaults as any ?? {})[key]}), {})
+  return Environment.from<EnvDefinition<R,O>>(environment, {requiredDefaults, optionalDefaults: (optionals as readonly string[] ?? []).reduce((acc, key) => ({...acc, [key]: undefined}), {})} as unknown as Defaults<EnvDefinition<R,O>>)
+}
+
 export interface Config<E> {
   secrets?: (keyof E)[];
   secretMapper: (key: keyof E, value?: string) => string | undefined;

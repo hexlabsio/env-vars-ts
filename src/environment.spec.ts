@@ -1,4 +1,4 @@
-import Environment, {Config} from "./environment";
+import Environment, {Config, defineEnvironment, defineEnvironmentFromProcess} from "./environment";
 
 describe('Environment', () => {
   
