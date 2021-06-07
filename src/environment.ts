@@ -22,24 +22,28 @@ type MatchOptionality<T,P> = undefined extends T ? P | undefined : P;
 
 type EnvironmentObject = { [key: string]: string | undefined };
 
-type Objify<R extends readonly string[], V> = R extends readonly [infer HEAD] ?
-  (HEAD extends string ? {[key in HEAD]: V} : never) :
-  R extends readonly [infer HEAD, ...infer TAIL] ?
-    ( TAIL extends string[] ? (HEAD extends string ? {[key in HEAD | keyof Objify<TAIL, V>]: V} : never) : never )
-    : never;
-type ObjifyOptional<R extends readonly string[], V> = R extends readonly [infer HEAD] ?
-  (HEAD extends string ? {[key in HEAD]?: V} : never) :
-  R extends readonly [infer HEAD, ...infer TAIL] ?
-    ( TAIL extends string[] ? (HEAD extends string ? {[key in HEAD | keyof ObjifyOptional<TAIL, V>]?: V} : never) : never )
-    : never;
+type UnionTuple<T extends readonly any[]> =
+  T extends readonly [] ? {} :
+  T extends never[] ? {} :
+  T extends readonly [infer HEAD] ?  HEAD :
+    T extends readonly[infer HEAD, infer H2, ...infer TAIL] ? HEAD | H2 | UnionTuple<TAIL> :
+      T extends readonly[infer HEAD, infer H2, infer H3, ...infer TAIL] ? HEAD | H2 | H3 | UnionTuple<TAIL> :
+        T extends readonly[infer HEAD, infer H2, infer H3, infer H4, ...infer TAIL] ? HEAD | H2 | H3 | H4 | UnionTuple<TAIL> :
+          T extends readonly[infer HEAD, infer H2, infer H3, infer H4, infer H5, ...infer TAIL] ? HEAD | H2 | H3 | H4 | H5 | UnionTuple<TAIL> :
+            T extends readonly [infer HEAD, ...infer TAIL] ? HEAD | UnionTuple<TAIL> :
+              '';
+
+type Objify<R extends readonly string[], V> = { [K in UnionTuple<R>]: V };
+type ObjifyOptional<R extends readonly string[], V> = { [K in UnionTuple<R>]?: V };
 
 type EnvDefinition<R extends readonly string[], O extends readonly string[]> = { [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }
 
-export function defineEnvironmentFromProcess<R extends readonly string[], O extends readonly string[]>(required?: R, optionals?: O, defaults?: ObjifyOptional<R, string>, config: Partial<Config<EnvDefinition<R,O>>> = {}): Environment<{ [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }> {
+export function defineEnvironmentFromProcess<R extends readonly string[], O extends readonly string[]>
+(required: R, optionals: O, defaults?: ObjifyOptional<R, string>, config: Partial<Config<EnvDefinition<R,O>>> = {}): Environment<{ [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }> {
   return defineEnvironment(process.env, required, optionals, defaults, config);
 }
 
-export function defineEnvironment<R extends readonly string[], O extends readonly string[]>(environment: EnvironmentObject, required?: R, optionals?: O, defaults?: ObjifyOptional<R, string>, config: Partial<Config<EnvDefinition<R,O>>> = {}): Environment<{ [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }> {
+export function defineEnvironment<R extends readonly string[], O extends readonly string[]>(environment: EnvironmentObject, required: R, optionals: O, defaults?: ObjifyOptional<R, string>, config: Partial<Config<EnvDefinition<R,O>>> = {}): Environment<{ [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }> {
   const requiredDefaults = (required as readonly string[] ?? []).reduce((acc, key) => ({...acc, [key]: (defaults as any ?? {})[key]}), {})
   return Environment.from<EnvDefinition<R,O>>(environment, {requiredDefaults, optionalDefaults: (optionals as readonly string[] ?? []).reduce((acc, key) => ({...acc, [key]: undefined}), {})} as unknown as Defaults<EnvDefinition<R,O>>, config)
 }
