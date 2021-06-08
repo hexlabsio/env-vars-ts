@@ -22,19 +22,8 @@ type MatchOptionality<T,P> = undefined extends T ? P | undefined : P;
 
 type EnvironmentObject = { [key: string]: string | undefined };
 
-type UnionTuple<T extends readonly any[]> =
-  T extends readonly [] ? {} :
-  T extends never[] ? {} :
-  T extends readonly [infer HEAD] ?  HEAD :
-    T extends readonly[infer HEAD, infer H2, ...infer TAIL] ? HEAD | H2 | UnionTuple<TAIL> :
-      T extends readonly[infer HEAD, infer H2, infer H3, ...infer TAIL] ? HEAD | H2 | H3 | UnionTuple<TAIL> :
-        T extends readonly[infer HEAD, infer H2, infer H3, infer H4, ...infer TAIL] ? HEAD | H2 | H3 | H4 | UnionTuple<TAIL> :
-          T extends readonly[infer HEAD, infer H2, infer H3, infer H4, infer H5, ...infer TAIL] ? HEAD | H2 | H3 | H4 | H5 | UnionTuple<TAIL> :
-            T extends readonly [infer HEAD, ...infer TAIL] ? HEAD | UnionTuple<TAIL> :
-              '';
-
-type Objify<R extends readonly string[], V> = { [K in UnionTuple<R>]: V };
-type ObjifyOptional<R extends readonly string[], V> = { [K in UnionTuple<R>]?: V };
+type Objify<R extends readonly string[], V> = { [K in R[number]]: V };
+type ObjifyOptional<R extends readonly string[], V> = { [K in R[number]]?: V };
 
 type EnvDefinition<R extends readonly string[], O extends readonly string[]> = { [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }
 
