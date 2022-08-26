@@ -1,7 +1,7 @@
 {
   "name": "@hexlabs/env-vars-ts",
   "author": "hexlabs.io",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Type safe control over environment variables in typescript",
   "main": "dist/environment.js",
   "types": "dist/environment.d.ts",

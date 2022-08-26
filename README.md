@@ -1,4 +1,4 @@
-# ENV-VARS-TS
+@hexlabs/env-vars-ts
 
 Typesafe control over environment variables in Typescript.
 
@@ -6,77 +6,70 @@ Typesafe control over environment variables in Typescript.
 [![npm version](https://badge.fury.io/js/%40hexlabs%2Fenv-vars-ts.svg)](https://badge.fury.io/js/%40hexlabs%2Fenv-vars-ts)
 
 ## Get Started
-Before using this library ensure that you have `"strict": true` set in tsconfig.
 
-Define the required environment variable names that you want: 
+Define the **required** environment variable names that you want by calling `create()`: 
 
 ```typescript
-const required = ['ENV_ONE', 'ENV_TWO'] as const; //as const is important for type information
+const builder = EnvironmentBuilder.create('a', 'b');
 ```
 
 Define the optional environment variable names that you want:
 
 ```typescript
-const optional = ['ENV_THREE', 'ENV_FOUR'] as const; //as const is important for type information
+const builder = EnvironmentBuilder
+  .create('a', 'b')
+  .optionals('c', 'd');
 ```
 
-Set up an Environment object providing default values (or not):
+Provide defaults optionally:
 
 ```typescript
-const environmentVariables = defineEnvironmentFromProcess(required, optional, { ENV_ONE: 'default value' });
+const builder = EnvironmentBuilder
+  .create('a', 'b')
+  .optionals('c', 'd')
+  .defaults({ a: 'default for a' });
 ```
 
-You can also provide various configuration options to hide secrets or log differently
+Get environment variables from `process.env` by default or provide your own
+
 ```typescript
-const environmentVariables = defineEnvironmentFromProcess(required, optional, { ENV_ONE: 'default value' }, 
-{ /* These configurations are all optional and have default values */
-  //List of keys considered secrets
-  secrets: ['ENV_ONE'],
-  // Controls what happens to secrets for printing
-  secretMapper: (key, value) => 'xxxxxxx',
-  // Controls what happens when errors occur, throws by default
-  onError: (error, failedKeys, environment) => { throw error },
-  // Controls how logs are printed
-  log: console.debug
-});
+// The type of environment is { a: string; b: string; c?: string; d?: string }
+const environment = EnvironmentBuilder
+  .create('a', 'b')
+  .optionals('c', 'd')
+  .defaults({ a: 'default for a' })
+  .environment(); // <- Provide your own envs here
 ```
 
-If all you want is the typed environment you can do this:
+Provide custom transforms for selected envs
 
 ```typescript
-const {environment} = defineEnvironmentFromProcess(required, optional);
-
-//The type of environment will be { ENV_ONE: string; ENV_TWO: string; ENV_THREE?: string; ENV_FOUR?: string }
-```
-
-Make use of environment variables:
-
-```typescript
-// Pull out environment directly. Its type will have the required / optional parts that were passed
-const environment = environmentVariables.environment;
-//Use environment variable as they has now been verified
-console.log(environment.ENV_ONE);
-
-// Get ENV_ONE. Its type is string;
-const envOne = environmentVariables.get('ENV_ONE');
-// Get ENV_FOUR. Its type is (string | undefined);
-const envFour = environmentVariables.get('ENV_FOUR')
-
-// Print environment variables
-environmentVariables.printEnvironment();
-// Prints:
-//{
-//   "ENV_THREE": "ENV_THREE DEFAULT VALUE",
-//   "ENV_FOUR": null,
-//   "ENV_ONE": "SECRET xxxxxxxxxxxxxxxxxxxxx",
-//   "ENV_TWO": "ENV_TWO_VALUE"
+// The type of environment is 
+// {
+//   selected: boolean;
+//   count: number;
+//   optionallySelected?: boolean;
+//   standardEnv?: string;
 // }
+const environment = EnvironmentBuilder
+  .create('selected', 'count')
+  .optionals('optionallySelected', 'standardEnv')
+  .transform(s => s === 'true', 'selected', 'optionallySelected')
+  .transform(s => Number.parseInt(s), 'count')
+  .defaults({ count: 25 }) // defaults will take into account your transforms notice this is a number and not a string.
+  .environment();
+```
 
-// Convert environment variable to a number
-environmentVariables.getNumber('NUM_ENV'); // Can result in NaN
-// Convert environment variable to a boolean
-environmentVariables.getBoolean('BOOL_ENV'); // Results in false if not 'true'
-// Convert environment variable to JSON (object, array, null, number, boolean)
-environmentVariables.getJson('JSON_ENV').as<SOMETYPE>(); // On parse failure calls config.onError (defaults to throw error)
+Lazily retrieve the type of environment before running 
+```typescript
+const environmentBuilder = EnvironmentBuilder.create('a', 'b');
+
+// Use Type alias for the environment defintion 
+// We use this in HexLabs to define expected lambda environment variables when creating CloudFormation stacks
+// where we do not want to check at build time as the stack is generated form TypeScript.
+type EnvVars = ReturnType<typeof environmentBuilder.environment>;
+
+//Get actual environment variables somewhere else
+const environment = environmentBuilder.environment();
 ```
 

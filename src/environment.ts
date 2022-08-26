@@ -1,141 +1,60 @@
-interface EnvironmentVariables {
-  [key: string]: string | undefined;
-}
+type MapNamesToKeys<T extends readonly string[]> = { [K in T[number]]: string }
 
-type ForcedPartial<T> = { [K in keyof T]: T[K] | undefined };
-type OptionalKeysFrom<T> = { [K in keyof T]-?: undefined extends T[K] ? K : never }[keyof T];
+export class EnvironmentBuilder<E = unknown, O = unknown> {
 
-type OptionalDefaults<T> = ForcedPartial<Pick<Required<T>, OptionalKeysFrom<T>>>
-type RequiredDefaults<T> = ForcedPartial<Omit<T, OptionalKeysFrom<T>>>
-
-type KeysWithNonEmptyObjects<T> = { [K in keyof T]: keyof T[K] extends never ? never : K}[keyof T];
-type PartsWithNonEmptyObjects<T> = Pick<T, KeysWithNonEmptyObjects<T>>
-
-interface _Defaults<T> {
-  requiredDefaults: RequiredDefaults<T>,
-  optionalDefaults: OptionalDefaults<T>;
-}
-
-type Defaults<E> = PartsWithNonEmptyObjects<_Defaults<E>>
-
-type MatchOptionality<T,P> = undefined extends T ? P | undefined : P;
-
-type EnvironmentObject = { [key: string]: string | undefined };
-
-type Objify<R extends readonly string[], V> = { [K in R[number]]: V };
-type ObjifyOptional<R extends readonly string[], V> = { [K in R[number]]?: V };
-
-type EnvDefinition<R extends readonly string[], O extends readonly string[]> = { [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }
-
-export function defineEnvironmentFromProcess<R extends readonly string[], O extends readonly string[]>
-(required: R, optionals: O, defaults?: ObjifyOptional<R, string>, config: Partial<Config<EnvDefinition<R,O>>> = {}): Environment<{ [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }> {
-  return defineEnvironment(process.env, required, optionals, defaults, config);
-}
-
-export function defineEnvironment<R extends readonly string[], O extends readonly string[]>(environment: EnvironmentObject, required: R, optionals: O, defaults?: ObjifyOptional<R, string>, config: Partial<Config<EnvDefinition<R,O>>> = {}): Environment<{ [K in keyof (Objify<R, string> & ObjifyOptional<O, string>)]: (Objify<R, string> & ObjifyOptional<O, string>)[K] }> {
-  const requiredDefaults = (required as readonly string[] ?? []).reduce((acc, key) => ({...acc, [key]: (defaults as any ?? {})[key]}), {})
-  return Environment.from<EnvDefinition<R,O>>(environment, {requiredDefaults, optionalDefaults: (optionals as readonly string[] ?? []).reduce((acc, key) => ({...acc, [key]: undefined}), {})} as unknown as Defaults<EnvDefinition<R,O>>, config)
-}
-
-export interface Config<E> {
-  secrets?: (keyof E)[];
-  secretMapper: (key: keyof E, value?: string) => string | undefined;
-  log: (message: string) => void;
-  onError: (error: Error, failedKeys?: (keyof E)[], environment?: E) => void
-}
-
-function defaultConfig<E>(): Config<E> {
-  return {
-    log: console.debug,
-    secretMapper: (key: keyof E, value?: string) => `SECRET ${new Array(value?.length ?? 0).fill('x').join('')}`,
-    onError: error => { throw error; }
-  }
-}
-
-export default class Environment<E extends EnvironmentVariables> {
-  
-  private representation?: E;
-  
-  private constructor(public readonly environment: E, public readonly config: Config<E>) {}
-  
-  private withMappedSecrets() {
-    const secrets: (keyof E)[] = this.config.secrets ?? [];
-    return Object.keys(this.environment)
-    .reduce((obj, key) => {
-      if (secrets.includes(key)) {
-        const mapped = this.config.secretMapper(key, this.environment[key]);
-        return { ...obj, [key]: mapped }
-      }
-      return {...obj, [key]: this.environment[key]};
-    }, {} as E);
-  }
-  
-  printEnvironment(convert: (env: E) => string = env => JSON.stringify(env, (key, value) => value ?? null, 2)): void {
-    if(!this.representation) {
-      this.representation = this.withMappedSecrets();
+  private constructor(
+    private readonly info: {
+      requiredKeys: string[];
+      optionalKeys: string[];
+      defaultValues: Partial<E>;
+      transforms: Record<string, (s: string) => unknown>;
     }
-    this.config.log(convert(this.representation));
+  ){}
+
+
+  optionals<S extends string[]>(...vars: S): EnvironmentBuilder<E, O & { [K in keyof MapNamesToKeys<S>]?: MapNamesToKeys<S>[K] }> {
+    return new EnvironmentBuilder({ ...this.info, optionalKeys: [...this.info. optionalKeys, ...vars] });
   }
-  
-  get<K extends keyof E>(variable: K): E[K] {
-    return this.environment[variable];
+
+  defaults(defaultValues: Partial<E> = {}): EnvironmentBuilder<E, O> {
+    return new EnvironmentBuilder({ ...this.info, defaultValues });
   }
-  
-  getBoolean<K extends keyof E>(variable: K): MatchOptionality<E[K], boolean> {
-    const env = this.environment[variable];
-    return (env !== undefined ? env === 'true' : undefined) as MatchOptionality<E[K], boolean>;
+
+  transform<S extends (keyof (E & O))[], R>(transform: (value: string) => R, ...vars: S): EnvironmentBuilder<Omit<E, S[number]> & { [K in keyof Pick<E, Exclude<S[number], keyof O>>]: R }, Omit<O, S[number]> & { [K in keyof Pick<O, Exclude<S[number], keyof E>>]: R }> {
+    return new EnvironmentBuilder<any, any>({ ...this.info, transforms: vars.reduce((prev, next) => ({...prev, [next]: transform}), this.info.transforms) });
   }
-  
-  getNumber<K extends keyof E>(variable: K): MatchOptionality<E[K], number> {
-    const env = this.environment[variable];
-    return (env !== undefined ? +env : undefined) as MatchOptionality<E[K], number>;
-  }
-  
-  getJson<K extends keyof E>(variable: K): { as: <T>() => MatchOptionality<E[K], T> } {
-    const env = this.environment[variable];
-    return { as: <T>() => {
-      if(env !== undefined) {
-        try {
-          return JSON.parse(env as string) as MatchOptionality<E[K], T>;
-        } catch (e) {
-          this.config.onError(e, [variable])
-        }
-      }
-      return undefined as MatchOptionality<E[K], T>;
-      } };
-  }
-  
-  private static requiredEnvs<E extends EnvironmentVariables>(environment: EnvironmentObject, defaults: RequiredDefaults<E>): { errors: (keyof E)[], requiredEnvs: E } {
-    return Object.keys(defaults).reduce((result, key) => {
-      const envValue = environment[key] ?? (defaults as { [key: string]: string })[key];
-      if (envValue !== undefined) {
-        return {errors: result.errors, requiredEnvs: {...result.requiredEnvs, [key]: envValue}};
-      }
-      return {errors: [...result.errors, key], requiredEnvs: {...result.requiredEnvs, [key]: envValue}};
-    }, {errors: new Array<keyof E>(), requiredEnvs: {} as E});
-  }
-  
-  private static optionalEnvs<E extends EnvironmentVariables>(environment: EnvironmentObject, defaults: OptionalDefaults<E>): E {
-    return Object.keys(defaults).reduce((result, key) =>
-        ({...result, [key]: environment[key] ?? (defaults as { [key: string]: string })[key]})
-      , {} as E);
-  }
-  
-  public static from<E extends EnvironmentVariables>(environment: EnvironmentObject, defaults: Defaults<E>, config: Partial<Config<E>> = {}): Environment<E> {
-    const {optionalDefaults, requiredDefaults} = defaults as Partial<_Defaults<E>>;
-    const optionalEnvs = optionalDefaults ? this.optionalEnvs(environment, optionalDefaults) : undefined;
-    const requiredEnvs = requiredDefaults ? this.requiredEnvs(environment, requiredDefaults) : undefined;
-    const allEnvs = {...optionalEnvs, ...(requiredEnvs?.requiredEnvs ?? {})} as E;
+
+  environment(variables: unknown = process.env): { [K in keyof (E & O)]: (E & O)[K] } {
+    const optionalEnvs = this.optionalEnvs(variables);
+    const requiredEnvs = this.requiredEnvs(variables);
+    const allEnvs = {...optionalEnvs, ...requiredEnvs.requiredEnvs};
     const errors = requiredEnvs?.errors ?? [];
-    const fullConfig = { ...defaultConfig<E>(), ...config};
     if (errors.length > 0) {
       const message = `The following environment variables are required but not set ${JSON.stringify(errors)}`;
-      fullConfig.onError(new Error(message), errors, allEnvs);
+      throw new Error(message);
     }
-    return new Environment<E>(allEnvs, fullConfig)
+    return allEnvs as any;
   }
-  
-  public static fromProcess<E extends EnvironmentVariables>(defaults: Defaults<E>, config: Partial<Config<E>> = {}): Environment<E> {
-    return Environment.from<E>(process.env, defaults, config);
+
+  static create<S extends string[]>(...vars: S): EnvironmentBuilder<{ [K in keyof MapNamesToKeys<S>]: MapNamesToKeys<S>[K] }, {}> {
+    return new EnvironmentBuilder({ requiredKeys: vars, optionalKeys: [], defaultValues: {}, transforms: {} });
+  }
+
+  private requiredEnvs(environment: any): { errors: string[], requiredEnvs: any } {
+    return this.info.requiredKeys.reduce((result, key) => {
+      const envValue = environment[key] ?? (this.info.defaultValues as any)[key];
+      if (envValue !== undefined) {
+        const transformed = this.info.transforms[key] ? this.info.transforms[key](envValue) : envValue;
+        return {errors: result.errors, requiredEnvs: {...result.requiredEnvs, [key]: transformed}};
+      }
+      return {errors: [...result.errors, key], requiredEnvs: {...result.requiredEnvs, [key]: envValue}};
+    }, {errors: new Array<string>(), requiredEnvs: {}});
+  }
+
+  private optionalEnvs(environment: any): any {
+    return this.info.optionalKeys.reduce((result, key) => {
+      const transformed = this.info.transforms[key] ? this.info.transforms[key](environment[key]) : environment[key];
+      return ({...result, [key]: transformed });
+    }, {});
   }
 }
