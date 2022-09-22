@@ -1,12 +1,19 @@
 import { EnvironmentBuilder } from './environment';
 
 
+
 describe('Environment', () => {
 
   it('should pull only typed vars from environment passed in', () => {
     const environment = EnvironmentBuilder.create('a').optionals('c').environment({a: 'abc', b: '123', c: 'def'});
     expect(Object.keys(environment)).toEqual(['c', 'a']);
     expect(environment).toEqual({a: 'abc', c: 'def'})
+  });
+
+  it('should accept only required variables', () => {
+    const environment = EnvironmentBuilder.create('a').environment({a: 'abc', b: '123', c: 'def'});
+    expect(Object.keys(environment)).toEqual(['a']);
+    expect(environment).toEqual({a: 'abc'})
   });
 
   it('should pull only typed vars from process environment', () => {
@@ -46,3 +53,5 @@ describe('Environment', () => {
 
   });
 });
+
+

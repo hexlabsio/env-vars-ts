@@ -26,9 +26,5 @@ module.exports = {
     filename: '[name].js',
     path: path.resolve(__dirname, 'dist'),
     libraryTarget: 'commonjs',
-  },
-  optimization: {
-    minimize: true,
-    minimizer: [new TerserPlugin()],
   }
 }
