@@ -1,16 +1,29 @@
 {
   "compilerOptions": {
-    "outDir": "./dist",
-    "sourceMap": true,
-    "module": "commonjs",
-    "target": "ESNext",
-    "esModuleInterop": true,
-    "declaration": true,
+    "rootDir": "src",
+    "baseUrl": ".",
+    "outDir": ".",
     "strict": true,
-    "typeRoots": ["./node_modules/@types"],
-    "lib": [
-      "esnext"
-    ]
+    "noUnusedLocals": true,
+    "declaration": true,
+    "allowSyntheticDefaultImports": false,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "allowJs": true,
+    "moduleResolution": "node",
+    "module": "ES2022",
+    "target": "ES2022",
+    "pretty": true,
+    "inlineSourceMap": false,
+    "inlineSources": false,
+    "esModuleInterop": true
+  },
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules"]

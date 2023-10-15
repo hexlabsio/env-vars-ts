@@ -7,38 +7,21 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [16.x]
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2.0.0
+      - uses: actions/checkout@v4
 
-      - name: Set Version
-        run: npm --no-git-tag-version version 1.0.${{ github.run_number }}
+      - uses: actions/setup-node@v3
+        with: { node-version: 18.x }
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
+      - run: npm --no-git-tag-version version 2.0.${{ github.run_number }}
 
-      - name: Install
-        run: npm ci
+      - run: npm ci
 
-      - name: Test
-        run: npm test
+      - run: npm test
 
-      - name: Production Build
-        run: npm run build
-
-      - name: Package
-        run: npm pack
-
-      - name: Authenticate with NPM registry
-        if: github.ref == 'refs/heads/master'
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
-
-      - name: Publish NPM package
-        if: github.ref == 'refs/heads/master'
-        run: npm publish --access public
+      - run: npm run build
+        -
+      - if: github.ref == 'refs/heads/master'
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+          npm publish --access public
