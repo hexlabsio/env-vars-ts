@@ -11,7 +11,7 @@
     "build": "rollup -c rollup.config.ts --configPlugin @rollup/plugin-typescript",
     "prebuild": "npm run lint",
     "lint": "eslint src --ext .ts",
-    "test": "npx jest --runInBand --detectOpenHandles --colors --verbose --reporters=default --coverage",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --no-cache --ci --runInBand --collectCoverage --restoreMocks",
     "prepare": "husky install"
   },
   "keywords": ["environment", "variables", "env", "envs"],
@@ -48,23 +48,6 @@
     "rules": {
       "@typescript-eslint/ban-types": 0,
       "@typescript-eslint/no-explicit-any": 0
-    }
-  },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "globals": {
-      "ts-jest": {
-        "tsconfig": "tsconfig.json"
-      }
-    },
-    "coverageThreshold": {
-      "global": {
-        "branches": 75,
-        "functions": 90,
-        "lines": 90,
-        "statements": 90
-      }
     }
   }
 }

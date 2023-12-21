@@ -1,6 +1,4 @@
-import { EnvironmentBuilder } from './environment';
-
-
+import { EnvironmentBuilder } from '../src/environment';
 
 describe('Environment', () => {
 
@@ -52,6 +50,13 @@ describe('Environment', () => {
     });
 
   });
-});
 
-
+  it('should allow setting of transformed type as default', () => {
+    const builder = EnvironmentBuilder.create('a').optionals('c', 'd')
+      .transform(s => s === 'true', 'a')
+      .defaults({ a: true })
+    expect(builder.environment({ d: '123'})).toEqual({a: true, d: '123'});
+    expect(builder.environment({ d: '123', a: 'xyz'})).toEqual({a: false, d: '123'});
+    expect(builder.environment({ d: '123', a: 'true'})).toEqual({a: true, d: '123'});
+  });
+})
