@@ -42,9 +42,11 @@ export class EnvironmentBuilder<E = unknown, O = unknown> {
 
   private requiredEnvs(environment: any): { errors: string[], requiredEnvs: any } {
     return this.info.requiredKeys.reduce((result, key) => {
-      const envValue = environment[key] ?? (this.info.defaultValues as any)[key];
+      const value = environment[key];
+      const hasValue = value !== undefined;
+      const envValue = hasValue ? environment[key] : (this.info.defaultValues as any)[key];
       if (envValue !== undefined) {
-        const transformed = this.info.transforms[key] ? this.info.transforms[key](envValue) : envValue;
+        const transformed = (this.info.transforms[key] && hasValue) ? this.info.transforms[key](envValue) : envValue;
         return {errors: result.errors, requiredEnvs: {...result.requiredEnvs, [key]: transformed}};
       }
       return {errors: [...result.errors, key], requiredEnvs: {...result.requiredEnvs, [key]: envValue}};
