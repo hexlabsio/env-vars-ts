@@ -16,7 +16,7 @@ export class EnvironmentBuilder<E = unknown, O = unknown> {
     return new EnvironmentBuilder({ ...this.info, optionalKeys: [...this.info. optionalKeys, ...vars] });
   }
 
-  defaults(defaultValues: Partial<E> = {}): EnvironmentBuilder<E, O> {
+  defaults(defaultValues: Partial<E>): EnvironmentBuilder<E, O> {
     return new EnvironmentBuilder({ ...this.info, defaultValues });
   }
 
@@ -36,8 +36,8 @@ export class EnvironmentBuilder<E = unknown, O = unknown> {
     return allEnvs as any;
   }
 
-  static create<S extends string[]>(...vars: S): EnvironmentBuilder<{ [K in keyof MapNamesToKeys<S>]: MapNamesToKeys<S>[K] }, {}> {
-    return new EnvironmentBuilder({ requiredKeys: vars, optionalKeys: [], defaultValues: {}, transforms: {} });
+  static create<const S extends string[]>(...vars: S): EnvironmentBuilder<{ [K in keyof MapNamesToKeys<S>]: MapNamesToKeys<S>[K] }, {}> {
+    return new EnvironmentBuilder({ requiredKeys: vars, optionalKeys: [], defaultValues: {}, transforms: {} }) as any;
   }
 
   private requiredEnvs(environment: any): { errors: string[], requiredEnvs: any } {
