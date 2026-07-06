@@ -1,5 +1,8 @@
 {
   "name": "@hexlabs/env-vars-ts",
+  "repository": {
+    "url": "https://github.com/hexlabsio/env-vars-ts"
+  },
   "author": "hexlabs.io",
   "type": "module",
   "version": "2.0.0",
