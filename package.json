@@ -10,6 +10,12 @@
   "main": "build/environment.mjs",
   "types": "build/environment.d.ts",
   "homepage": "https://github.com/hexlabsio/env-vars-ts#readme",
+  "files": [
+    "src",
+    "build",
+    "package.json",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "rollup -c rollup.config.ts --configPlugin @rollup/plugin-typescript",
     "prebuild": "npm run lint",
