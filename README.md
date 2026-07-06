@@ -21,6 +21,7 @@ const builder = EnvironmentBuilder
   .optionals('c', 'd');
 ```
 
+
 Provide defaults optionally:
 
 ```typescript
