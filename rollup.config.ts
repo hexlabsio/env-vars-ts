@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import { defineConfig } from 'rollup';
 import commonjs from '@rollup/plugin-commonjs';
 import typescript from '@rollup/plugin-typescript';
@@ -9,7 +10,8 @@ export default defineConfig({
   output: {
     format: 'esm',
     sourcemap: true,
-    file: 'build/environment.mjs',
+    dir: 'build',
+    preserveModules: true
   },
   plugins: [
     json({ compact: true }),

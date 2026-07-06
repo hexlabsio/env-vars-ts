@@ -2,7 +2,7 @@
   "compilerOptions": {
     "rootDir": "src",
     "baseUrl": ".",
-    "outDir": ".",
+    "outDir": "build",
     "strict": true,
     "noUnusedLocals": true,
     "declaration": true,

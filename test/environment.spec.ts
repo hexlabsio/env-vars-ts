@@ -45,7 +45,7 @@ describe('Environment', () => {
     describe('Error Scenarios', () => {
       it('should throw err  when required var not present', () => {
         expect(() => EnvironmentBuilder.create('a').environment({b: '123'}))
-          .toThrowError("The following environment variables are required but not set [\"a\"]");
+          .toThrow("The following environment variables are required but not set [\"a\"]");
       });
     });
 
