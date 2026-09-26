@@ -2,6 +2,9 @@ type MapNamesToKeys<T extends readonly string[]> = { [K in T[number]]: string }
 
 export class EnvironmentBuilder<E = unknown, O = unknown> {
 
+  public readonly environmentType: { [K in keyof (E & O)]: (E & O)[K] } = {} as any;
+  public readonly awsLambdaEnvironmentType: { [K in keyof E]: string } & { [K in keyof O]-?: string | "" } = {} as any;
+
   private constructor(
     private readonly info: {
       requiredKeys: string[];
@@ -12,7 +15,7 @@ export class EnvironmentBuilder<E = unknown, O = unknown> {
   ){}
 
 
-  optionals<S extends string[]>(...vars: S): EnvironmentBuilder<E, O & { [K in keyof MapNamesToKeys<S>]?: MapNamesToKeys<S>[K] }> {
+  optionals<const S extends string[]>(...vars: S): EnvironmentBuilder<E, O & { [K in keyof MapNamesToKeys<S>]?: MapNamesToKeys<S>[K] }> {
     return new EnvironmentBuilder({ ...this.info, optionalKeys: [...this.info. optionalKeys, ...vars] });
   }
 
@@ -20,8 +23,10 @@ export class EnvironmentBuilder<E = unknown, O = unknown> {
     return new EnvironmentBuilder({ ...this.info, defaultValues });
   }
 
-  transform<S extends (keyof (E & O))[], R>(transform: (value: string) => R, ...vars: S): EnvironmentBuilder<Omit<E, S[number]> & { [K in keyof Pick<E, Exclude<S[number], keyof O>>]: R }, Omit<O, S[number]> & { [K in keyof Pick<O, Exclude<S[number], keyof E>>]: R }> {
-    return new EnvironmentBuilder<any, any>({ ...this.info, transforms: vars.reduce((prev, next) => ({...prev, [next]: transform}), this.info.transforms) });
+  transform<const S extends (keyof (E & O))[], R>(transform: (value: string) => R, ...vars: S): EnvironmentBuilder<Omit<E, S[number]> & { [K in keyof Pick<E, Exclude<S[number], keyof O>>]: R }, Omit<O, S[number]> & { [K in keyof Pick<O, Exclude<S[number], keyof E>>]: R }> {
+    return new EnvironmentBuilder<Omit<E, S[number]> & { [K in keyof Pick<E, Exclude<S[number], keyof O>>]: R }, Omit<O, S[number]> & { [K in keyof Pick<O, Exclude<S[number], keyof E>>]: R }>(
+      { ...this.info, transforms: vars.reduce((prev, next) => ({...prev, [next]: transform}), this.info.transforms) } as any
+    );
   }
 
   environment(variables: unknown = process.env): { [K in keyof (E & O)]: (E & O)[K] } {
@@ -38,6 +43,10 @@ export class EnvironmentBuilder<E = unknown, O = unknown> {
 
   static create<const S extends string[]>(...vars: S): EnvironmentBuilder<{ [K in keyof MapNamesToKeys<S>]: MapNamesToKeys<S>[K] }, {}> {
     return new EnvironmentBuilder({ requiredKeys: vars, optionalKeys: [], defaultValues: {}, transforms: {} }) as any;
+  }
+
+  addRequired<const S extends string[]>(...vars: S): EnvironmentBuilder<E & { [K in keyof MapNamesToKeys<S>]: MapNamesToKeys<S>[K] }, O> {
+    return new EnvironmentBuilder({ requiredKeys: { ...this.info.requiredKeys, ...vars }, optionalKeys: this.info.optionalKeys, defaultValues: this.info.defaultValues, transforms: this.info.transforms }) as any;
   }
 
   private requiredEnvs(environment: any): { errors: string[], requiredEnvs: any } {

@@ -60,3 +60,4 @@ describe('Environment', () => {
     expect(builder.environment({ d: '123', a: 'true'})).toEqual({a: true, d: '123'});
   });
 })
+

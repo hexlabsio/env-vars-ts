@@ -3,6 +3,7 @@
     "rootDir": "src",
     "baseUrl": ".",
     "outDir": "build",
+    "lib": ["es5"],
     "strict": true,
     "noUnusedLocals": true,
     "declaration": true,
