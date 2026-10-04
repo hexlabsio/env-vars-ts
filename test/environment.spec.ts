@@ -44,7 +44,7 @@ describe('Environment', () => {
 
     describe('Error Scenarios', () => {
       it('should throw err  when required var not present', () => {
-        expect(() => EnvironmentBuilder.create('a').environment({b: '123'}))
+        expect(() => EnvironmentBuilder.create('a').environment({b: '123'} as unknown as any))
           .toThrow("The following environment variables are required but not set [\"a\"]");
       });
     });
@@ -54,10 +54,9 @@ describe('Environment', () => {
   it('should allow setting of transformed type as default', () => {
     const builder = EnvironmentBuilder.create('a').optionals('c', 'd')
       .transform(s => s === 'true', 'a')
-      .defaults({ a: true })
+      .defaults({ a: true });
     expect(builder.environment({ d: '123'})).toEqual({a: true, d: '123'});
     expect(builder.environment({ d: '123', a: 'xyz'})).toEqual({a: false, d: '123'});
     expect(builder.environment({ d: '123', a: 'true'})).toEqual({a: true, d: '123'});
   });
-})
-
+});
