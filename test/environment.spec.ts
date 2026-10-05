@@ -42,6 +42,14 @@ describe('Environment', () => {
       expect(environment).toEqual({a: false, d: '123'});
     });
 
+    it('should allow combining with new variables', () => {
+      const environment1 = EnvironmentBuilder.create('a').optionals('c', 'd');
+      const environment2 = environment1.addRequired('x', 'y')
+
+      expect(environment1.environment({a: false, d: '123'})).toEqual({a: false, d: '123'});
+      expect(environment2.environment({a: true, x: 'x', y: 'y'})).toEqual({a: true, x: 'x', y: 'y'});
+    });
+
     describe('Error Scenarios', () => {
       it('should throw err  when required var not present', () => {
         expect(() => EnvironmentBuilder.create('a').environment({b: '123'} as unknown as any))

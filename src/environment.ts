@@ -46,7 +46,7 @@ export class EnvironmentBuilder<Req = unknown, Optional = unknown, Defaults = un
   }
 
   addRequired<const S extends string[]>(...vars: S): EnvironmentBuilder<Req & { [K in keyof MapNamesToKeys<S>]: MapNamesToKeys<S>[K] }, Optional, Defaults> {
-    return new EnvironmentBuilder({ requiredKeys: { ...this.info.requiredKeys, ...vars }, optionalKeys: this.info.optionalKeys, defaultValues: this.info.defaultValues, transforms: this.info.transforms }) as any;
+    return new EnvironmentBuilder({ requiredKeys: [ ...this.info.requiredKeys, ...vars ], optionalKeys: this.info.optionalKeys, defaultValues: this.info.defaultValues, transforms: this.info.transforms }) as any;
   }
 
   private requiredEnvs(environment: any): { errors: string[], requiredEnvs: any } {
