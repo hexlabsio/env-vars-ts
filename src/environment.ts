@@ -1,10 +1,21 @@
 type MapNamesToKeys<T extends readonly string[]> = { [K in T[number]]: string }
 
+type AnyBuilder = EnvironmentBuilder<any, any, any>;
+export type EnvironmentOf<B extends AnyBuilder> = B['environmentType'];
+export type InputEnvironmentOf<B extends AnyBuilder> = B['inputEnvironmentType'];
+export type RequiredEnvironmentOf<B extends AnyBuilder> = B['requiredEnvironmentType'];
+
+type Transformed<Req, Optional, Defaults, K extends PropertyKey, R> = EnvironmentBuilder<
+  Omit<Req, K> & { [P in keyof Pick<Req, Extract<Exclude<K, keyof Optional>, keyof Req>>]: R },
+  Omit<Optional, K> & { [P in keyof Pick<Optional, Extract<Exclude<K, keyof Req>, keyof Optional>>]: R },
+  Defaults
+>;
+
 export class EnvironmentBuilder<Req = unknown, Optional = unknown, Defaults = unknown> {
 
-  public readonly environmentType: { [K in keyof (Req & Optional)]: (Req & Optional)[K] } = {} as any;
-  public readonly inputEnvironmentType: { [K in keyof (Omit<typeof this.environmentType, keyof Defaults> & Partial<Defaults>)]: string } = {} as any;
-  public readonly requiredEnvironmentType: { [K in Exclude<keyof Req, keyof Defaults>]: string } = {} as any;
+  declare readonly environmentType: { [K in keyof (Req & Optional)]: (Req & Optional)[K] };
+  declare readonly inputEnvironmentType: { [K in keyof (Omit<typeof this.environmentType, keyof Defaults> & Partial<Defaults>)]: string };
+  declare readonly requiredEnvironmentType: { [K in Exclude<keyof Req, keyof Defaults>]: string };
 
   private constructor(
     private readonly info: {
@@ -20,13 +31,37 @@ export class EnvironmentBuilder<Req = unknown, Optional = unknown, Defaults = un
   }
 
   defaults<D extends Partial<Req>>(defaultValues: D): EnvironmentBuilder<Req, Optional, Defaults & D> {
-    return new EnvironmentBuilder({ ...this.info, defaultValues });
+    return new EnvironmentBuilder({ ...this.info, defaultValues: { ...this.info.defaultValues, ...defaultValues } });
   }
 
-  transform<const S extends (keyof (Req & Optional))[], R>(transform: (value: string) => R, ...vars: S): EnvironmentBuilder<Omit<Req, S[number]> & { [K in keyof Pick<Req, Exclude<S[number], keyof Optional>>]: R }, Omit<Optional, S[number]> & { [K in keyof Pick<Optional, Exclude<S[number], keyof Req>>]: R }, Defaults> {
-    return new EnvironmentBuilder<Omit<Req, S[number]> & { [K in keyof Pick<Req, Exclude<S[number], keyof Optional>>]: R }, Omit<Optional, S[number]> & { [K in keyof Pick<Optional, Exclude<S[number], keyof Req>>]: R }, Defaults>(
+  transform<const S extends (keyof (Req & Optional))[], R>(transform: (value: string) => R, ...vars: S): Transformed<Req, Optional, Defaults, S[number], R> {
+    return new EnvironmentBuilder(
       { ...this.info, transforms: vars.reduce((prev, next) => ({...prev, [next]: transform}), this.info.transforms) } as any
     );
+  }
+
+  transformAsNumber<const S extends (keyof (Req & Optional))[]>(...vars: S): Transformed<Req, Optional, Defaults, S[number], number> {
+    return this.transform(asNumber, ...vars);
+  }
+
+  transformAsInteger<const S extends (keyof (Req & Optional))[]>(...vars: S): Transformed<Req, Optional, Defaults, S[number], number> {
+    return this.transform(asInteger, ...vars);
+  }
+
+  transformAsBoolean<const S extends (keyof (Req & Optional))[]>(...vars: S): Transformed<Req, Optional, Defaults, S[number], boolean> {
+    return this.transform(asBoolean, ...vars);
+  }
+
+  transformAsUrl<const S extends (keyof (Req & Optional))[]>(...vars: S): Transformed<Req, Optional, Defaults, S[number], URL> {
+    return this.transform(asUrl, ...vars);
+  }
+
+  transformAsList<const S extends (keyof (Req & Optional))[]>(...vars: S): Transformed<Req, Optional, Defaults, S[number], string[]> {
+    return this.transform(asList(), ...vars);
+  }
+
+  transformAsEnum<const V extends readonly string[], const S extends (keyof (Req & Optional))[]>(values: V, ...vars: S): Transformed<Req, Optional, Defaults, S[number], V[number]> {
+    return this.transform(asEnum(...values), ...vars);
   }
 
   environment(variables: unknown = process.env): typeof this.environmentType {
@@ -55,7 +90,7 @@ export class EnvironmentBuilder<Req = unknown, Optional = unknown, Defaults = un
       const hasValue = value !== undefined;
       const envValue = hasValue ? environment[key] : (this.info.defaultValues as any)[key];
       if (envValue !== undefined) {
-        const transformed = (this.info.transforms[key] && hasValue) ? this.info.transforms[key](envValue) : envValue;
+        const transformed = hasValue ? this.applyTransform(key, envValue) : envValue;
         return {errors: result.errors, requiredEnvs: {...result.requiredEnvs, [key]: transformed}};
       }
       return {errors: [...result.errors, key], requiredEnvs: {...result.requiredEnvs, [key]: envValue}};
@@ -64,8 +99,82 @@ export class EnvironmentBuilder<Req = unknown, Optional = unknown, Defaults = un
 
   private optionalEnvs(environment: any): any {
     return this.info.optionalKeys.reduce((result, key) => {
-      const transformed = this.info.transforms[key] ? this.info.transforms[key](environment[key]) : environment[key];
-      return ({...result, [key]: transformed });
+      if (environment[key] === undefined) return result;
+      return ({...result, [key]: this.applyTransform(key, environment[key]) });
     }, {});
   }
+
+  private applyTransform(key: string, value: string): unknown {
+    const transform = this.info.transforms[key];
+    if (!transform) return value;
+    try {
+      return transform(value);
+    } catch (e) {
+      throw new Error(`Environment variable ${key} is invalid: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+}
+
+function invalid(expected: string, value: string): Error {
+  return new Error(`expected ${expected} but got ${JSON.stringify(value)}`);
+}
+
+/** Parses any numeric value, e.g. "42", "3.14", "-1e3". Rejects empty and non-numeric values. */
+export function asNumber(value: string): number {
+  const result = Number(value);
+  if (value.trim() === '' || Number.isNaN(result)) throw invalid('a number', value);
+  return result;
+}
+
+/** Parses a whole number, e.g. "8080". Rejects decimals. */
+export function asInteger(value: string): number {
+  const result = Number(value);
+  if (value.trim() === '' || !Number.isInteger(result)) throw invalid('an integer', value);
+  return result;
+}
+
+const trueValues = ['true', '1', 'yes', 'y', 'on'];
+const falseValues = ['false', '0', 'no', 'n', 'off'];
+
+/** Parses true/false, 1/0, yes/no, y/n or on/off (case-insensitive). Rejects anything else. */
+export function asBoolean(value: string): boolean {
+  const normalised = value.trim().toLowerCase();
+  if (trueValues.includes(normalised)) return true;
+  if (falseValues.includes(normalised)) return false;
+  throw invalid(`one of ${[...trueValues, ...falseValues].join(', ')}`, value);
+}
+
+/** Parses a URL, e.g. "https://example.com". */
+export function asUrl(value: string): URL {
+  try {
+    return new URL(value);
+  } catch {
+    throw invalid('a URL', value);
+  }
+}
+
+/** Parses JSON. The type parameter is not validated at runtime. */
+export function asJson<T = unknown>(): (value: string) => T {
+  return value => {
+    try {
+      return JSON.parse(value);
+    } catch {
+      throw invalid('valid JSON', value);
+    }
+  };
+}
+
+/** Only allows one of the given values, and narrows the type to them. */
+export function asEnum<const T extends readonly string[]>(...values: T): (value: string) => T[number] {
+  return value => {
+    if (!values.includes(value)) throw invalid(`one of ${values.join(', ')}`, value);
+    return value;
+  };
+}
+
+/** Splits a value into a trimmed list, ignoring empty items. Optionally transforms each item. */
+export function asList(separator?: string): (value: string) => string[];
+export function asList<R>(separator: string, item: (value: string) => R): (value: string) => R[];
+export function asList(separator = ',', item: (value: string) => unknown = value => value): (value: string) => unknown[] {
+  return value => value.split(separator).map(part => part.trim()).filter(part => part !== '').map(item);
 }
