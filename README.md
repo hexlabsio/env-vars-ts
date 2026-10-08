@@ -2,6 +2,8 @@
 
 Typesafe control over environment variables in Typescript.
 
+**Documentation:** [hexlabs.io/env-vars-ts](https://hexlabs.io/env-vars-ts) · [Getting started](https://hexlabs.io/env-vars-ts/getting-started) · [Reference](https://hexlabs.io/env-vars-ts/reference)
+
 [![npm version](https://badge.fury.io/js/%40hexlabs%2Fenv-vars-ts.svg)](https://badge.fury.io/js/%40hexlabs%2Fenv-vars-ts)
 
 [![Build](https://github.com/hexlabsio/env-vars-ts/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/hexlabsio/env-vars-ts/actions/workflows/build.yml)

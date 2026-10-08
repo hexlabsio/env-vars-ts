@@ -9,7 +9,7 @@
   "description": "Type-safe control over environment variables in typescript",
   "main": "build/environment.js",
   "types": "build/environment.d.ts",
-  "homepage": "https://github.com/hexlabsio/env-vars-ts#readme",
+  "homepage": "https://hexlabs.io/env-vars-ts",
   "files": [
     "src",
     "build",
